@@ -1,0 +1,35 @@
+name: demo
+on:
+  schedule:
+    - cron: "25 14 * * 1-5"   # 16:25-22:20 Israel (winter): New York session, best liquidity
+    - cron: "0 8 * * *"       # short daily swing check, crypto trades 7 days
+  workflow_dispatch:
+    inputs:
+      minutes: {default: "5"}
+concurrency: {group: demo, cancel-in-progress: false}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: {repository: "${{ github.repository_owner }}/short-term-journal", token: "${{ secrets.JOURNAL_TOKEN }}", path: journal}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -q pandas yfinance matplotlib
+      - name: trade
+        env: {JOURNAL_DIR: "${{ github.workspace }}/journal"}
+        run: |
+          cd src
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then M=${{ inputs.minutes }}; S=swing,scalp
+          elif [ "${{ github.event.schedule }}" = "0 8 * * *" ]; then M=10; S=swing
+          else M=350; S=swing,scalp; fi
+          python engine.py $M $S
+          python report.py
+      - name: save journal (private repo)
+        if: always()
+        run: |
+          cd journal
+          git config user.name demo-bot && git config user.email demo-bot@users.noreply.github.com
+          git add -A && git commit -qm "run $(date -u +%F_%H%M)" && git push -q || echo "nothing to save"
