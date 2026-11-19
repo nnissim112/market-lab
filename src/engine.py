@@ -75,7 +75,12 @@ def find_entry(sym, kind, mtf, ttf, style, st):
     low_tf = candles(sym, kind, ttf, 300)
     if low_tf.empty or len(low_tf) < 30:
         return None
+    used = st.setdefault("used_zones", [])
     for z in zones:
+        zkey = f'{sym}:{z["dir"]}:{z["bottom"]:.6g}:{z["top"]:.6g}'
+        if zkey in used:            # one shot per interest zone; a stopped-out zone is spent
+            continue
+        z["key"] = zkey
         if z["dir"] == "long":
             touched = low_tf[low_tf["low"] <= z["mid"]]
             if touched.empty:
@@ -155,6 +160,7 @@ def find_entry(sym, kind, mtf, ttf, style, st):
     return None
 
 def open_trade(st, setup):
+    st.setdefault("used_zones", []).append(setup["zone"]["key"])
     for name, base in ACCOUNTS.items():
         acc = st["accounts"][name]
         if setup["symbol"] in acc["open"]:

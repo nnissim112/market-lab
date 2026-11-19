@@ -73,7 +73,8 @@ def interest_zones(df, tr):
         return zones
     lvl705 = fib_level(tr, 0.705)
     lows, highs = swings(df)
-    for z in fvgs(df, tr.end_i if tr.direction == "up" else tr.end_i):
+    lo_i, hi_i = sorted((tr.start_i, tr.end_i))
+    for z in [f for f in fvgs(df, lo_i) if f["i"] <= hi_i]:   # FVGs inside the trend leg
         if tr.direction == "up" and z["side"] == "bull" and z["top"] <= lvl705 and z["bottom"] > tr.start:
             liq = any(df["low"].iloc[i] > z["top"] for i in lows if i > z["i"])
             zones.append({**z, "dir": "long", "liquidity_above": liq})
