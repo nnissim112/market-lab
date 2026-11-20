@@ -25,6 +25,13 @@ UNIVERSE = [
 def now():
     return dt.datetime.now(dt.timezone.utc)
 
+def ny_session(t=None):
+    """NY cash session 14:30-21:00 UTC, Mon-Fri (winter; summer is 13:30-20:00, close enough for futures)."""
+    t = t or now()
+    m = t.hour * 60 + t.minute
+    return t.weekday() < 5 and 14 * 60 + 30 <= m < 21 * 60
+
+
 def load():
     p = f"{ROOT}/state.json"
     if os.path.exists(p):
@@ -204,6 +211,8 @@ def run(minutes=355, every=300, styles=("swing", "scalp")):
         for sym, kind, mtf, ttf, style in UNIVERSE:
             if style not in styles:
                 continue
+            if style == "scalp" and not ny_session():
+                continue   # GitHub cron can start hours late; scalp only inside the NY session
             if all(sym in a["open"] for a in st["accounts"].values()):
                 continue
             try:
